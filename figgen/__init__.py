@@ -7,7 +7,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 class DataAnalyzer:
-    def __init__(self, wandb_path, min_length = 100, color_scheme = "viridis"):
+    def __init__(self, wandb_path, min_length = 100, color_scheme = "viridis", export_to_wandb=False):
         self.wandb_path = wandb_path #use "entity/project"
         self.api_key = os.getenv('WANDB_API_KEY')
         self.api = wandb.Api()
@@ -15,6 +15,7 @@ class DataAnalyzer:
         self.histories = {}
         self.min_length = min_length 
         self.color_scheme = color_scheme
+        self.export_to_wandb = export_to_wandb
         self.get_histories()
     
     def get_histories(self):

@@ -10,6 +10,9 @@ python = "^3.11,<3.12"
 python-dotenv = "^1.0.0"
 wandb = "^0.16.2"
 eztils = "^0.4.94"
+seaborn = "^0.13.2"
+matplotlib = "^3.8.4"
+pandas = "2.0.3"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"
