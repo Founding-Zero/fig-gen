@@ -110,5 +110,3 @@ class DataAnalyzer:
         for header in pertinent_headers:
             data = self.fetch_and_process_sigma_data(header)
             self.visualize_individual_sigma_data(data, header)
-analyzer = DataAnalyzer('lad', 'sed', export_to_wandb=True)
-analyzer.plot_all_sigma_data()
