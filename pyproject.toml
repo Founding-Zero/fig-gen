@@ -13,6 +13,7 @@ eztils = "^0.4.94"
 seaborn = "^0.13.2"
 matplotlib = "^3.8.4"
 pandas = "2.0.3"
+load-dotenv = "^0.1.0"
 
 [build-system]
 build-backend = "poetry.core.masonry.api"
