@@ -18,7 +18,7 @@ class BenchMARLDataAnalyzer(DataAnalyzer):
                 data_header in self.histories[run.id].columns
                 and len(self.histories[run.id][data_header]) > self.min_length
             ):
-                desired_group[run.config["sigma_vals"]].append(
+                desired_group[run.config["task_config"]["sigma_vals"]].append(
                     self.histories[run.id][data_header]
                     .iloc[1 : self.min_length]
                     .tolist()
@@ -116,12 +116,29 @@ class BenchMARLDataAnalyzer(DataAnalyzer):
 
     def plot_all_sigma_data(self):
         pertinent_headers = [
-            "charts/voted_p_value",
-            "charts/mean_taxed_return",
-            "charts/mean_episodic_return",
-            "charts/mean_raw_return",
-            "charts/p_mean_taxed_return",
-            "charts/p_mean_raw_return",
+            "collection/agents/reward/episode_reward_min",
+            "collection/agents/reward/reward_mean",
+            "collection/agents/reward/episode_reward_max",
+            "collection/agents/reward/episode_reward_mean",
+            "collection/agents/reward/episode_reward_max",
+            "collection/agents/social_influenced_reward/social_influenced_reward_max",
+            "collection/agents/social_influenced_reward/social_influenced_reward_mean",
+            "collection/agents/social_influenced_reward/social_influenced_reward_min",
+            "collection/agents/taxed_return/taxed_return_mean",
+            "collection/agents/taxed_return/taxed_return_min",
+            "collection/agents/taxed_return/taxed_return_max",
+            "collection/agents/taxed_reward/taxed_reward_max",
+            "collection/agents/taxed_reward/taxed_reward_min",
+            "collection/agents/taxed_reward/taxed_reward_mean",
+            "collection/reward/episode_reward_mean",
+            "collection/reward/episode_reward_min",
+            "collection/reward/episode_reward_max",
+            "eval/agents/reward/episode_reward_max",
+            "eval/agents/reward/episode_reward_min",
+            "eval/agents/reward/episode_reward_mean",
+            "eval/reward/episode_reward_min",
+            "eval/reward/episode_reward_max",
+            "eval/reward/episode_reward_mean",
         ]
         for header in pertinent_headers:
             data = self.fetch_and_process_sigma_data(header)
