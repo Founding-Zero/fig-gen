@@ -62,6 +62,7 @@ class DataAnalyzer:
         x_label: str = None,
         y_label: str = None,
         x_ticks_by_data: bool = False,
+        custom_error_bar_fn=None,
     ):
         """Visualize a dataframe with this form. Here, Temperature is the x-axis, Rating is the y-axis, and Stockfish Skill Level is the group key.:
 
@@ -112,6 +113,9 @@ class DataAnalyzer:
                 dashes=False,
                 palette=color_dict,
                 err_style="band",
+                errorbar=("ci", 95)
+                if custom_error_bar_fn is None
+                else custom_error_bar_fn,
             )
 
             plt.title(title, fontsize="large")
