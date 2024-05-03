@@ -29,6 +29,8 @@ class DataAnalyzer:
         self.export_to_wandb = export_to_wandb
         if self.export_to_wandb and self.api_key:
             wandb.init(project=self.wandb_project, entity=self.wandb_entity)
+        self.get_runs()
+        self.get_histories()
 
     def get_runs(self, run_ids=None):
         if run_ids is not None:

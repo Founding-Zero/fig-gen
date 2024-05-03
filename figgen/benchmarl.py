@@ -3,14 +3,14 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-
+import wandb
 from figgen import DataAnalyzer
 
 
 class BenchMARLDataAnalyzer(DataAnalyzer):
+    
+    
     def fetch_and_process_sigma_data(self, data_header):
-        self.get_runs()
-        self.get_histories()
 
         desired_group = defaultdict(list)
         for run in self.runs:
@@ -18,10 +18,11 @@ class BenchMARLDataAnalyzer(DataAnalyzer):
                 data_header in self.histories[run.id].columns
                 and len(self.histories[run.id][data_header]) > self.min_length
             ):
+                series = self.histories[run.id][data_header].iloc[1:]
+                smoothed_series = series.rolling(window=50, min_periods=1, center=True).mean()
+                # Append the smoothed data to the list
                 desired_group[run.config["task_config"]["sigma_vals"]].append(
-                    self.histories[run.id][data_header]
-                    .iloc[1 : self.min_length]
-                    .tolist()
+                    smoothed_series.tolist()
                 )
 
         desired_data = {}
@@ -57,7 +58,7 @@ class BenchMARLDataAnalyzer(DataAnalyzer):
             plt.title(f"{title} across all Sigma groups")
             plt.xlabel("Episodes")
             plt.ylabel(f"{title}")
-            plt.xlim(left=0, right=self.min_length)
+            plt.xlim(left=0, right=500)
             plt.ylim(bottom=0)
             plt.grid(True)
             if self.export_to_wandb:
@@ -105,7 +106,7 @@ class BenchMARLDataAnalyzer(DataAnalyzer):
                 plt.title(f"{title} (Sigma {highlighted_sigma} Highlighted)")
                 plt.xlabel("Episodes")
                 plt.ylabel(f"{title}")
-                plt.xlim(left=0, right=self.min_length)
+                plt.xlim(left=0, right=500)
                 plt.ylim(bottom=0)
                 plt.legend(title="Sigma")
                 plt.grid(True)
@@ -120,7 +121,6 @@ class BenchMARLDataAnalyzer(DataAnalyzer):
             "collection/agents/reward/reward_mean",
             "collection/agents/reward/episode_reward_max",
             "collection/agents/reward/episode_reward_mean",
-            "collection/agents/reward/episode_reward_max",
             "collection/agents/social_influenced_reward/social_influenced_reward_max",
             "collection/agents/social_influenced_reward/social_influenced_reward_mean",
             "collection/agents/social_influenced_reward/social_influenced_reward_min",
