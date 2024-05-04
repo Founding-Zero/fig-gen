@@ -176,10 +176,10 @@ class GlickoCalc:
     def __init__(self):
         self.stockfish_elos = {
             "1": 1554,
-            "2": 1759,
-            "3": 1867,
+            "2": 1773,
+            "3": 1871,
             "4": 2006,
-            "5": 2148,
+            "5": 2153,
         }
         self.session_state = {
             "nanogpt_rating": 1500,

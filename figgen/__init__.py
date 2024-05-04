@@ -15,7 +15,8 @@ class DataAnalyzer:
         wandb_entity,
         wandb_project,
         min_length=100,
-        color_scheme="viridis",
+        # color_scheme="viridis",
+        color_scheme="magma",
         export_to_wandb=False,
     ):
         load_dotenv()
@@ -101,7 +102,15 @@ class DataAnalyzer:
 
         """
         groups = data[group_key].unique()
-        palette = sns.color_palette(self.color_scheme, n_colors=len(groups))
+        # palette = sns.dark_palette("seagreen", n_colors=len(groups))
+        # palette = sns.diverging_palette(171, 80, s=74, l=50, sep=10, n=len(groups), center='dark')
+        palette = sns.diverging_palette(220, 10, s=74, l=50, sep=10, n=len(groups), center='dark')
+        # palette = sns.color_palette(self.color_scheme, n_colors=len(groups))
+        # palette = sns.cubehelix_palette(n_colors=len(groups), start=0.5, rot=-0.95)
+        # palette = sns.color_palette(self.color_scheme, n_colors=(4*len(groups)))
+        # filtered_palette = palette[0::4]
+        # palette = filtered_palette
+        # palette = sns.cubehelix_palette(n_colors=len(groups))
         color_dict = {skill_level: color for skill_level, color in zip(groups, palette)}
         with sns.axes_style("darkgrid"):
             fig, ax = plt.subplots(figsize=(12, 8))
