@@ -15,8 +15,8 @@ class DataAnalyzer:
         wandb_entity,
         wandb_project,
         min_length=100,
-        # color_scheme="viridis",
-        color_scheme="magma",
+        color_scheme="viridis",
+        # color_scheme="magma",
         export_to_wandb=False,
     ):
         load_dotenv()
@@ -104,8 +104,8 @@ class DataAnalyzer:
         groups = data[group_key].unique()
         # palette = sns.dark_palette("seagreen", n_colors=len(groups))
         # palette = sns.diverging_palette(171, 80, s=74, l=50, sep=10, n=len(groups), center='dark')
-        palette = sns.diverging_palette(220, 10, s=74, l=50, sep=10, n=len(groups), center='dark')
-        # palette = sns.color_palette(self.color_scheme, n_colors=len(groups))
+        # palette = sns.diverging_palette(220, 10, s=74, l=50, sep=10, n=len(groups), center='dark')
+        palette = sns.color_palette(self.color_scheme, n_colors=len(groups))
         # palette = sns.cubehelix_palette(n_colors=len(groups), start=0.5, rot=-0.95)
         # palette = sns.color_palette(self.color_scheme, n_colors=(4*len(groups)))
         # filtered_palette = palette[0::4]
@@ -137,6 +137,100 @@ class DataAnalyzer:
 
             plt.ylim(bottom=0)
             plt.grid(True)
+            if self.export_to_wandb:
+                self.send_to_wandb(fig, title)
+            else:
+                plt.savefig(f"{title}.png")
+
+    def visualize_lineplot_groupby_with_dotted_line(
+        self,
+        title: str,
+        x_key: str,
+        y_key: str,
+        group_key: str,
+        data: pd.DataFrame,
+        x_label: str = None,
+        y_label: str = None,
+        x_ticks_by_data: bool = False,
+        custom_error_bar_fn=None,
+        dotted_line_x=20,
+    ):
+        """Visualize a dataframe with this form. Here, Temperature is the x-axis, Rating is the y-axis, and Stockfish Skill Level is the group key.:
+
+        stockfish_groupby = "Stockfish Skill Level" # Key for the temperature group
+        sample_data = [
+            {"Temperature": 0.3, stockfish_groupby: "0", "Rating": 1000},
+            {"Temperature": 0.3, stockfish_groupby: "1", "Rating": 1200},
+            {"Temperature": 0.3, stockfish_groupby: "2", "Rating": 1400},
+            {"Temperature": 0.2, stockfish_groupby: "0", "Rating": 1100},
+            {"Temperature": 0.2, stockfish_groupby: "1", "Rating": 1300},
+            {"Temperature": 0.2, stockfish_groupby: "2", "Rating": 1500},
+            {"Temperature": 0.1, stockfish_groupby: "0", "Rating": 1200},
+            {"Temperature": 0.1, stockfish_groupby: "1", "Rating": 1400},
+            {"Temperature": 0.1, stockfish_groupby: "2", "Rating": 1600},
+        ]
+
+        # add noise to data for error bars
+        data = pd.DataFrame.from_dict(
+            sum(
+                [
+                    [
+                        {
+                            "Temperature": d["Temperature"],
+                            stockfish_groupby: d[stockfish_groupby],
+                            "Rating": d["Rating"] + 100 * np.random.randn(),
+                        }
+                        for d in sample_data
+                    ]
+                    for _ in range(3)
+                ],
+                [],
+            )
+        )
+
+        visualize_lineplot_groupby("Chess Ratings of NanoGPT across Temperature", "Temperature", "Rating", stockfish_groupby, data, x_ticks_by_data=True)
+
+        """
+        groups = data[group_key].unique()
+        # palette = sns.dark_palette("seagreen", n_colors=len(groups))
+        # palette = sns.diverging_palette(171, 80, s=74, l=50, sep=10, n=len(groups), center='dark')
+        # palette = sns.diverging_palette(220, 10, s=74, l=50, sep=10, n=len(groups), center='dark')
+        palette = sns.color_palette(self.color_scheme, n_colors=len(groups))
+        # palette = sns.cubehelix_palette(n_colors=len(groups), start=0.5, rot=-0.95)
+        # palette = sns.color_palette(self.color_scheme, n_colors=(4*len(groups)))
+        # filtered_palette = palette[0::4]
+        # palette = filtered_palette
+        # palette = sns.cubehelix_palette(n_colors=len(groups))
+        color_dict = {skill_level: color for skill_level, color in zip(groups, palette)}
+        with sns.axes_style("darkgrid"):
+            fig, ax = plt.subplots(figsize=(12, 8))
+            sns.lineplot(
+                data=data,
+                x=x_key,
+                y=y_key,
+                hue=group_key,
+                dashes=False,
+                palette=color_dict,
+                err_style="band",
+                errorbar=("ci", 95)
+                if custom_error_bar_fn is None
+                else custom_error_bar_fn,
+            )
+
+            plt.title(title, fontsize="large")
+            plt.xlabel(x_label or x_key.capitalize(), fontsize="large")
+            plt.ylabel(y_label or y_key.capitalize(), fontsize="large")
+
+            # plt.xlim(left=0, right=self.min_length)
+            if x_ticks_by_data:
+                plt.xticks(data[x_key].unique())
+
+            plt.ylim(bottom=0)
+            plt.grid(True)
+            
+            if dotted_line_x is not None:
+                ax.axvline(x=dotted_line_x, color='grey', linestyle='--', linewidth=1)
+            
             if self.export_to_wandb:
                 self.send_to_wandb(fig, title)
             else:
