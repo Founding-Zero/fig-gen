@@ -152,8 +152,8 @@ class DataAnalyzer:
         x_label: str = None,
         y_label: str = None,
         x_ticks_by_data: bool = False,
+        dotted_line_x: list = [],
         custom_error_bar_fn=None,
-        dotted_line_x=20,
     ):
         """Visualize a dataframe with this form. Here, Temperature is the x-axis, Rating is the y-axis, and Stockfish Skill Level is the group key.:
 
@@ -228,8 +228,11 @@ class DataAnalyzer:
             plt.ylim(bottom=0)
             plt.grid(True)
             
-            if dotted_line_x is not None:
-                ax.axvline(x=dotted_line_x, color='grey', linestyle='--', linewidth=1)
+            # if dotted_line_x is not None:
+            i = 0
+            for trained_game_length in dotted_line_x:
+                ax.axvline(x=trained_game_length, color=palette[i], linestyle='--', linewidth=1)
+                i += 1
             
             if self.export_to_wandb:
                 self.send_to_wandb(fig, title)

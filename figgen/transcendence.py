@@ -118,7 +118,7 @@ if __name__ == "__main__":
             custom_error_bar_fn=custom_error_bar_fn,
         )
         
-    def game_length_sampling_experiment(groupby, y_label, data):
+    def game_length_sampling_experiment(groupby, y_label, data, trained_game_lengths):
         analyzer.visualize_lineplot_groupby_with_dotted_line(
             f"{y_label}s of NanoGPT across Game Lengths",
             "Starting_Moves",
@@ -127,8 +127,8 @@ if __name__ == "__main__":
             pd.DataFrame(data),
             y_label=f"Chess {y_label}",
             x_ticks_by_data=True,
+            dotted_line_x=trained_game_lengths,
             custom_error_bar_fn=None,
-            dotted_line_x=10,
         )
         
     def plot_glicko_across_6_elos():
@@ -219,25 +219,55 @@ if __name__ == "__main__":
         temperature_sampling_experiment(groupby, y_label, sample_data)
     # plot_glicko_across_6_elos()
     
-    # def plot_glicko_by_game_length():
-    runs_in_project_per_low_elo = {
-        # "1300": ["baapshvl"],
-        "1700": ["mppogx97"],
-        "1800": ["800eydo6"],
-        "1900": ["40rpczem"],
-        "2000": ["jxatkohv"],
+    # def plot_glicko_by_prompted_moves():
+    # runs_in_project_per_trained_game_lengths = { # 0 --> 35
+    #     30: ["w05vky0w"],
+    #     35: ["0dw332co"],
+    #     40: ["cnah42me"],
+    #     45: ["ycjjlm6e"],
+    #     50: ["xqz2weko"],
+    #     55: ["1zbajuca"],
+    #     60: ["9obr37lb"],
+    #     65: ["80o97opc"],
+    # }
+    # runs_in_project_per_trained_game_lengths = { # 0 --> 85
+    #     30: ["gcwzltax"],
+    #     35: ["8i0jrd8y"],
+    #     40: ["y5r6vsct"],
+    #     45: ["lebz9wrg"],
+    #     50: ["drl2mdne"],
+    #     55: ["wpdmm2h3"],
+    #     60: ["vuu6r467"],
+    #     65: ["86h60ypq"],
+    # }
+    
+    # runs_in_project_per_trained_game_lengths = { # 0 --> 85 && game_lengths 40 - 95 && Positional Embeddings && W/Random Moves
+    #     30: ["rcy1kfrb", "kszox6pb"],
+    #     35: ["kcy3w25y", "mlwz4rt2"],
+    #     40: ["gve4pr73", "2ilyv5g3"],
+    #     45: ["pdjdaqf7", "wxhy999z"],
+    #     50: ["0teq0qtk", "w75wrjx2"],
+    #     55: ["temt8epb", "ld8louk1"],
+    #     60: ["nm7d93u4", "ssva9orf"],
+    #     65: ["gbx2lyb5", "clk6hzmw"],
+    # }
+    
+    runs_in_project_per_trained_game_lengths = { # 0 --> 85 && Positional Embeddings && W/O Random Moves
+        30: ["zbf7anqn"],
+        35: ["1zk2yzln"],
+        40: ["eailn4yv"],
+        45: ["v6rw4ulb"],
+        50: ["jckzgdqu"],
+        55: ["sxr7bmdv"],
+        60: ["bntx63sl"],
+        65: ["6o4ihay1"],
     }
     
-    # for run_id in runs_in_project: # iterate over the keys
-    #     dfs = analyzer.get_table(run_id)
-    # dfs = analyzer.get_table("ps88jtca")
-    # dfs = analyzer.get_table("ppg3yrog") #1700 Elo
-    # dfs = analyzer.get_table("dfxh8i7a") #1800 Elo
     sample_data = []
-    for low_elo, run_ids in runs_in_project_per_low_elo.items():
+    for trained_game_length, run_ids in runs_in_project_per_trained_game_lengths.items():
         dfs = []
         for run_id in run_ids:
-            dfs += analyzer.get_table(run_id) #1900 Elo
+            dfs += analyzer.get_table(run_id)
             
         for df in dfs:
             (
@@ -249,42 +279,40 @@ if __name__ == "__main__":
             num_start_moves = df.loc[0, 'num_start_moves']
             print("Number of Start Moves: ", num_start_moves)
             
-            groupby = "Low_Elo"  # Key for the temperature group
+            groupby = "trained_game_length"  # Key for the temperature group
             y_label = "Rating"
             sample_data += [
                 {
                     "Starting_Moves": num_start_moves,
-                    "Low_Elo": low_elo,
+                    "trained_game_length": trained_game_length,
                     # "Rating": 2 * glicko_elo - dev,
                     "Rating": glicko_elo,
                 },
                 {
                     "Starting_Moves": num_start_moves,
-                    "Low_Elo": low_elo,
+                    "trained_game_length": trained_game_length,
                     "Rating": glicko_elo - dev,
                     # "Rating": dev,
                 },  # super hacky
                 {
                     "Starting_Moves": num_start_moves,
-                    "Low_Elo": low_elo,
+                    "Low_Elo": trained_game_length,
                     "Rating": glicko_elo + dev,
                 },  # super hacky
             ]
-    # sample_data = sum(
-    #     [
-    #         [
-    #             {
-    #                 "Starting_Moves": d["Starting_Moves"],
-    #                 groupby: d[groupby],
-    #                 y_label: d[y_label] + 100 * np.random.randn(),
-    #             }
-    #             for d in sample_data
-    #         ]
-    #         for _ in range(3)
-    #     ],
-    #     [],
-    # )  
-    game_length_sampling_experiment(groupby, y_label, sample_data)
+
+    game_length_sampling_experiment(groupby, y_label, sample_data, runs_in_project_per_trained_game_lengths.keys())
+        
+        # "1300": ["baapshvl"],
+        # "1700": ["mppogx97"],
+        # "1800": ["800eydo6"],
+        # "1900": ["40rpczem"],
+        # "2000": ["jxatkohv"],
+    # for run_id in runs_in_project: # iterate over the keys
+    #     dfs = analyzer.get_table(run_id)
+    # dfs = analyzer.get_table("ps88jtca")
+    # dfs = analyzer.get_table("ppg3yrog") #1700 Elo
+    # dfs = analyzer.get_table("dfxh8i7a") #1800 Elo
         
     # sample_data = [
     #     {"Game_Length": 0, groupby: "5", y_label: 1000},
