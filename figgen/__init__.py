@@ -238,3 +238,58 @@ class DataAnalyzer:
                 self.send_to_wandb(fig, title)
             else:
                 plt.savefig(f"{title}.png")
+                
+    def visualize_barplot_groupby(
+        self,
+        title: str,
+        category: str,
+        y_key: str,
+        group_key: str,
+        data: pd.DataFrame,
+        x_label: str = None,
+        y_label: str = None,
+        x_ticks_by_data: bool = False,
+    ):
+        groups = data[category].unique()
+        # palette = sns.dark_palette("seagreen", n_colors=len(groups))
+        # palette = sns.diverging_palette(171, 80, s=74, l=50, sep=10, n=len(groups), center='dark')
+        # palette = sns.diverging_palette(220, 10, s=74, l=50, sep=10, n=len(groups), center='dark')
+        palette = sns.color_palette(self.color_scheme, n_colors=len(groups))
+        # palette = sns.cubehelix_palette(n_colors=len(groups), start=0.5, rot=-0.95)
+        # palette = sns.color_palette(self.color_scheme, n_colors=(4*len(groups)))
+        # filtered_palette = palette[0::4]
+        # palette = filtered_palette
+        # palette = sns.cubehelix_palette(n_colors=len(groups))
+        color_dict = {skill_level: color for skill_level, color in zip(groups, palette)}
+        with sns.axes_style("darkgrid"):
+            fig, ax = plt.subplots(figsize=(16, 9))
+            sns.barplot(
+                data=data,
+                x=group_key,
+                y=y_key,
+                hue=category,
+                palette=color_dict,
+                errorbar=("pi", 50), capsize=.4,
+                err_kws={"color": "0", "linewidth": 2.5},
+                # errorbar=("ci", 95)
+            )
+
+            plt.title(title, fontsize="large")
+            # plt.xlabel('High Elo')
+            # plt.ylabel('Rating')
+            plt.legend(title='Conditioning')
+            plt.xticks(rotation=45)
+            plt.xlabel(x_label, fontsize="large")
+            plt.ylabel(y_label, fontsize="large")
+
+            # plt.xlim(left=0, right=self.min_length)
+            # if x_ticks_by_data:
+            #     plt.xticks(data[group_key].unique())
+
+            # plt.ylim(bottom=0)
+            plt.grid(True)
+
+            if self.export_to_wandb:
+                self.send_to_wandb(fig, title)
+            else:
+                plt.savefig(f"{title}.png")

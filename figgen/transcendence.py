@@ -2,6 +2,7 @@
 import os
 import pickle
 import random
+import json
 
 from figgen.glicko2 import GlickoCalc
 
@@ -22,7 +23,7 @@ from figgen import DataAnalyzer
 
 
 class TranscendenceDataAnalyzer(DataAnalyzer):
-    def fetch_and_process_skill_level_data_for_temperature(self, df: pd.DataFrame):
+    def fetch_and_process(self, df: pd.DataFrame):
         row = df.iloc[0]
 
         glicko = GlickoCalc()
@@ -52,12 +53,9 @@ class TranscendenceDataAnalyzer(DataAnalyzer):
         runs = self.get_runs([run_id])
         # run_title = runs[0].config.get("title") or runs[0].summary.get("title")
         artifacts = runs[0].logged_artifacts()
-
         dfs = []
         for artifact in artifacts:
             table_name = next(iter(artifact.manifest.entries))
-            # if "2000_2000" not in table_name:  #!!! HACK, need to fix
-            #     continue
             if table_name == "0000.parquet": # should be the end of the list of tables
                 break
             table = artifact.get(table_name)
@@ -67,29 +65,76 @@ class TranscendenceDataAnalyzer(DataAnalyzer):
 
         return dfs
     
-    def get_table_game_length(self, run_id):
+    def get_all_charts_sort_by_ckpt(self, run_id):
         runs = self.get_runs([run_id])
-        # run_title = runs[0].config.get("title") or runs[0].summary.get("title")
-        artifacts = runs[0].logged_artifacts()
+                        
+        def create_nested_dict(run):
+            nested_dict = {}
+            for key, value in run.summary.items():
+                parts = key.split('/')  # Split the path into components
+                if key.startswith("tactics_eval"):
+                    parts[2], parts[3] = parts[3], parts[2]
+                parts = [part.strip() for part in parts if part]  # Remove any empty strings
 
+                # Start with the top-level dictionary and iteratively go deeper
+                current_level = nested_dict
+                for part in parts[:-1]:  # Go up to the second last part to build keys
+                    if part not in current_level:
+                        current_level[part] = {}  # Create a new dictionary if the key does not exist
+                    current_level = current_level[part]  # Move to the next level of the dictionary
+
+                # Set the value at the deepest level
+                last_key = parts[-1]
+                current_level[last_key] = value
+
+            return nested_dict
+        
+        # Convert and write JSON object to file
+        with open("sample.json", "w") as outfile: 
+            json.dump(create_nested_dict(runs[0]), outfile)
+        return create_nested_dict(runs[0])
+            
+    def get_df_from_panels_per_ckpt(self, data_by_big_row):
         dfs = {}
-        for artifact in artifacts:
-            table_name = next(iter(artifact.manifest.entries))
-            # if "2000_2000" not in table_name:  #!!! HACK, need to fix
-            #     continue
-            if table_name == "0000.parquet": # should be the end of the list of tables
-                break
-            # print(table_name)
-            # game_length = table_name[-2]
-            # print("GAME LENGTH: ", game_length)
-            # game_length = table_name[length_index + 17 : length_index + 17 + 2]
-            table = artifact.get(table_name)
-            if table is not None:
-                df = pd.DataFrame(data=table.data, columns=table.columns)
-                dfs.append(df)
-
-        return dfs
-
+        avg_big_row = {}
+        avg_big_row_indexes = ["accuracy", "correctly solved percentage", "solved length", "length"]
+        for model_key, metric_dict in data_by_big_row["avg"].items(): # panels is a list of panel items
+            column_name = " ".join(model_key.split("_"))
+            avg_big_row[column_name] = []
+            avg_big_row[column_name].append(metric_dict["accuracy"])
+            avg_big_row[column_name].append(metric_dict["correctly_solved_percentage"])
+            avg_big_row[column_name].append(metric_dict["solved_length"])
+            avg_big_row[column_name].append(metric_dict["length"])
+            
+        # turn big_row into pandas data frame:
+        avg_big_row_df = pd.DataFrame(avg_big_row, index=avg_big_row_indexes)
+        dfs["avg"] = avg_big_row_df
+        
+        for i in range(1, 11):
+            big_row = {}
+            big_row_indexes = ["accuracy", "correctly solved percentage", "avg solved len", "total evals"]
+            if str(i) in data_by_big_row.keys():
+                for model_key, metric_dict in data_by_big_row[str(i)].items(): # panels is a list of panel items
+                    column_name = " ".join(model_key.split("_"))
+                    if metric_dict["total_evals"] < 100:
+                        metric_dict["accuracy"] = None
+                        metric_dict["correctly_solved_percentage"] = None
+                        metric_dict["avg_solved_len"] = None
+                        metric_dict["total_evals"] = None
+                        continue
+                        
+                    big_row[column_name] = []
+                    big_row[column_name].append(metric_dict["accuracy"])
+                    big_row[column_name].append(metric_dict["correctly_solved_percentage"])
+                    big_row[column_name].append(metric_dict["avg_solved_len"])
+                    big_row[column_name].append(metric_dict["total_evals"])
+                
+            # turn big_row into pandas data frame:
+            big_row_df = pd.DataFrame(big_row, index=big_row_indexes)
+            dfs[str(i)] = big_row_df    
+        
+        combined_df = pd.concat(dfs, keys=dfs.keys(), names=['Length Number', 'Eval Metric'])
+        return combined_df
 
 # %%
 def custom_error_bar_fn(x):
@@ -102,6 +147,9 @@ def custom_error_bar_fn(x):
 if __name__ == "__main__":
     analyzer = TranscendenceDataAnalyzer(
         wandb_entity="project-eval", wandb_project="transcendence-Eval-Full"
+    )
+    tactics_analyzer = TranscendenceDataAnalyzer(
+        wandb_entity="project-eval", wandb_project="tactics_eval"
     )
     # https://wandb.ai/project-eval/770-Testing-Eval/runs/2vev6jt5/overview?nw=nwuserezipe 770-High-Elo-2000-Eval at April 28, 4:32pm
     # table = analyzer.get_table("r5gi54js")
@@ -129,6 +177,19 @@ if __name__ == "__main__":
             x_ticks_by_data=True,
             dotted_line_x=trained_game_lengths,
             custom_error_bar_fn=None,
+        )
+    
+    def win_condition_experiment(groupby, y_label, data, category, plot_num):
+        title = f"{y_label}s of NanoGPT Win Conditioning 1000-1500" if plot_num == 1 else f"{y_label}s of NanoGPT Win Conditioning 1600-2100"
+        analyzer.visualize_barplot_groupby(
+            title,
+            category,
+            y_label,
+            groupby,
+            pd.DataFrame(data),
+            x_label = "Trained High Elos",
+            y_label=f"Chess {y_label}",
+            x_ticks_by_data=True,
         )
         
     def plot_glicko_across_6_elos():
@@ -194,7 +255,7 @@ if __name__ == "__main__":
                 (
                     glicko_elo,
                     dev
-                ) = analyzer.fetch_and_process_skill_level_data_for_temperature(df)
+                ) = analyzer.fetch_and_process(df)
                 sample_data += [
                     # {
                     #     "Temperature": temperature,
@@ -219,100 +280,285 @@ if __name__ == "__main__":
         temperature_sampling_experiment(groupby, y_label, sample_data)
     # plot_glicko_across_6_elos()
     
-    # def plot_glicko_by_prompted_moves():
-    # runs_in_project_per_trained_game_lengths = { # 0 --> 35
-    #     30: ["w05vky0w"],
-    #     35: ["0dw332co"],
-    #     40: ["cnah42me"],
-    #     45: ["ycjjlm6e"],
-    #     50: ["xqz2weko"],
-    #     55: ["1zbajuca"],
-    #     60: ["9obr37lb"],
-    #     65: ["80o97opc"],
-    # }
-    # runs_in_project_per_trained_game_lengths = { # 0 --> 85
-    #     30: ["gcwzltax"],
-    #     35: ["8i0jrd8y"],
-    #     40: ["y5r6vsct"],
-    #     45: ["lebz9wrg"],
-    #     50: ["drl2mdne"],
-    #     55: ["wpdmm2h3"],
-    #     60: ["vuu6r467"],
-    #     65: ["86h60ypq"],
-    # }
+    def plot_glicko_by_num_starting_moves():
+        # runs_in_project_per_trained_game_lengths = { # 0 --> 35
+        #     30: ["w05vky0w"],
+        #     35: ["0dw332co"],
+        #     40: ["cnah42me"],
+        #     45: ["ycjjlm6e"],
+        #     50: ["xqz2weko"],
+        #     55: ["1zbajuca"],
+        #     60: ["9obr37lb"],
+        #     65: ["80o97opc"],
+        # }
+        # runs_in_project_per_trained_game_lengths = { # 0 --> 85
+        #     30: ["gcwzltax"],
+        #     35: ["8i0jrd8y"],
+        #     40: ["y5r6vsct"],
+        #     45: ["lebz9wrg"],
+        #     50: ["drl2mdne"],
+        #     55: ["wpdmm2h3"],
+        #     60: ["vuu6r467"],
+        #     65: ["86h60ypq"],
+        # }
+        
+        # runs_in_project_per_trained_game_lengths = { # 0 --> 85 && game_lengths 40 - 95 && Positional Embeddings && W/Random Moves
+        #     30: ["rcy1kfrb", "kszox6pb"],
+        #     35: ["kcy3w25y", "mlwz4rt2"],
+        #     40: ["gve4pr73", "2ilyv5g3"],
+        #     45: ["pdjdaqf7", "wxhy999z"],
+        #     50: ["0teq0qtk", "w75wrjx2"],
+        #     55: ["temt8epb", "ld8louk1"],
+        #     60: ["nm7d93u4", "ssva9orf"],
+        #     65: ["gbx2lyb5", "clk6hzmw"],
+        # }
+        
+        runs_in_project_per_trained_game_lengths = { # 0 --> 85 && Positional Embeddings && W/O Random Moves
+            30: ["zbf7anqn"],
+            35: ["1zk2yzln"],
+            40: ["eailn4yv"],
+            45: ["v6rw4ulb"],
+            50: ["jckzgdqu"],
+            55: ["sxr7bmdv"],
+            60: ["bntx63sl"],
+            65: ["6o4ihay1"],
+        }
+        
+        sample_data = []
+        for trained_game_length, run_ids in runs_in_project_per_trained_game_lengths.items():
+            dfs = []
+            for run_id in run_ids:
+                dfs += analyzer.get_table(run_id)
+                
+            for df in dfs:
+                (
+                    glicko_elo,
+                    dev
+                ) = analyzer.fetch_and_process(df)
+                game_len = df.loc[0, 'game_total_moves']
+                print("Game Length: ", game_len)
+                num_start_moves = df.loc[0, 'num_start_moves']
+                print("Number of Start Moves: ", num_start_moves)
+                
+                groupby = "trained_game_length"  # Key for the temperature group
+                y_label = "Rating"
+                sample_data += [
+                    {
+                        "Starting_Moves": num_start_moves,
+                        "trained_game_length": trained_game_length,
+                        # "Rating": 2 * glicko_elo - dev,
+                        "Rating": glicko_elo,
+                    },
+                    {
+                        "Starting_Moves": num_start_moves,
+                        "trained_game_length": trained_game_length,
+                        "Rating": glicko_elo - dev,
+                        # "Rating": dev,
+                    },  # super hacky
+                    {
+                        "Starting_Moves": num_start_moves,
+                        "Low_Elo": trained_game_length,
+                        "Rating": glicko_elo + dev,
+                    },  # super hacky
+                ]
+
+        game_length_sampling_experiment(groupby, y_label, sample_data, runs_in_project_per_trained_game_lengths.keys())
+        
+    # plot_glicko_by_num_starting_moves()
     
-    # runs_in_project_per_trained_game_lengths = { # 0 --> 85 && game_lengths 40 - 95 && Positional Embeddings && W/Random Moves
-    #     30: ["rcy1kfrb", "kszox6pb"],
-    #     35: ["kcy3w25y", "mlwz4rt2"],
-    #     40: ["gve4pr73", "2ilyv5g3"],
-    #     45: ["pdjdaqf7", "wxhy999z"],
-    #     50: ["0teq0qtk", "w75wrjx2"],
-    #     55: ["temt8epb", "ld8louk1"],
-    #     60: ["nm7d93u4", "ssva9orf"],
-    #     65: ["gbx2lyb5", "clk6hzmw"],
-    # }
-    
-    runs_in_project_per_trained_game_lengths = { # 0 --> 85 && Positional Embeddings && W/O Random Moves
-        30: ["zbf7anqn"],
-        35: ["1zk2yzln"],
-        40: ["eailn4yv"],
-        45: ["v6rw4ulb"],
-        50: ["jckzgdqu"],
-        55: ["sxr7bmdv"],
-        60: ["bntx63sl"],
-        65: ["6o4ihay1"],
+    win_conditions_runs_per_high_elo_1 = { 
+        1000: ["13ynfpra"],
+        1100: ["67v6rzfc"],
+        1200: ["cvgpd24s"],
+        1300: ["lbizo04p"],
+        1400: ["60je9jab"],
+        1500: ["vefofn98"],
     }
-    
-    sample_data = []
-    for trained_game_length, run_ids in runs_in_project_per_trained_game_lengths.items():
-        dfs = []
-        for run_id in run_ids:
-            dfs += analyzer.get_table(run_id)
+    win_conditions_runs_per_high_elo_2 = { 
+        1600: ["1esbn5yp"],
+        1700: ["ypemclgv"],
+        1800: ["bdd2k2ia"],
+        1900: ["oxgy04r0"],
+        2000: ["lwlloyu0"],
+        2100: ["5hf9k0ny"],
+    }
+    no_win_conditions_runs_per_high_elo_1 = {
+        1000: ["t2uz57fr", "akbd8k2v"],
+        1100: ["jfwepvp6", "2nlzvq3l"],
+        1200: ["asqcagmw", "6cuuhiff"],
+        1300: ["u56krymr", "ar2ta0cs"],
+        1400: ["lhyji88c", "zgyf6ngk"],
+        1500: ["z1xdz9c9", "zyqaxg1h"],
+    }
+    no_win_conditions_runs_per_high_elo_2 = {
+        # 1600: ["fc880mfe"],
+        # 1700: ["rwcsa409"],
+        # 1800: ["cydu8n2q"],
+        # 1900: ["emtr89mq"],
+        # 2000: ["8za606nb"],
+        # 2100: ["j52idlnk"],
+        1600: ["l6d4aysn"],
+        1700: ["fi06dre7"],
+        1800: ["2paeibpl"],
+        1900: ["6imrtoj2"],
+        2000: ["dbvnpraj"],
+        2100: ["d4jwtk3h"],
+    }
+
+    def plot_win_conditioning(win_conditions_runs_per_high_elo, no_win_conditions_runs_per_high_elo, plot_num):
+        sample_data = []
+        for elo, run_ids in win_conditions_runs_per_high_elo.items():
+            dfs = []
+            for run_id in run_ids:
+                dfs += analyzer.get_table(run_id)
+                
+            for df in dfs:
+                # df = df.drop(df[df['temperature'] != 0.001].index)
+                (
+                    glicko_elo,
+                    dev
+                ) = analyzer.fetch_and_process(df)
+                
+                
+                groupby = "High_Elo"
+                category = "Condition"
+                y_label = "Rating"
+                sample_data += [
+                    {
+                        "High_Elo": elo,
+                        "Rating": glicko_elo,
+                        "Condition": "Win_Conditioning",
+                    },
+                    {
+                        "High_Elo": elo,
+                        "Rating": glicko_elo - dev,
+                        "Condition": "Win_Conditioning",
+                    },
+                    {
+                        "High_Elo": elo,
+                        "Rating": glicko_elo + dev,
+                        "Condition": "Win_Conditioning",
+                    },
+                ]
+                
+        for elo, run_ids in no_win_conditions_runs_per_high_elo.items():
+            dfs = []
+            for run_id in run_ids:
+                dfs += analyzer.get_table(run_id)
+                
+            desired_dfs = []
+            for df in dfs:
+                row = df.iloc[0]           
+                if row['temperature'] == 0.001:
+                    desired_dfs.append(df)
+                    
+            df = pd.concat(desired_dfs)
+            # print(f"Elo: {elo}\n", df) 
+            if df.shape[0] == 0:
+                continue
             
-        for df in dfs:
             (
                 glicko_elo,
                 dev
-            ) = analyzer.fetch_and_process_skill_level_data_for_temperature(df)
-            game_len = df.loc[0, 'game_total_moves']
-            print("Game Length: ", game_len)
-            num_start_moves = df.loc[0, 'num_start_moves']
-            print("Number of Start Moves: ", num_start_moves)
+            ) = analyzer.fetch_and_process(df)
             
-            groupby = "trained_game_length"  # Key for the temperature group
+            
+            groupby = "High_Elo"
+            category = "Condition"
             y_label = "Rating"
             sample_data += [
                 {
-                    "Starting_Moves": num_start_moves,
-                    "trained_game_length": trained_game_length,
-                    # "Rating": 2 * glicko_elo - dev,
+                    "High_Elo": elo,
                     "Rating": glicko_elo,
+                    "Condition": "No_Win_Conditioning",
                 },
                 {
-                    "Starting_Moves": num_start_moves,
-                    "trained_game_length": trained_game_length,
+                    "High_Elo": elo,
                     "Rating": glicko_elo - dev,
-                    # "Rating": dev,
-                },  # super hacky
+                    "Condition": "No_Win_Conditioning",
+                },
                 {
-                    "Starting_Moves": num_start_moves,
-                    "Low_Elo": trained_game_length,
+                    "High_Elo": elo,
                     "Rating": glicko_elo + dev,
-                },  # super hacky
+                    "Condition": "No_Win_Conditioning",
+                },
             ]
 
-    game_length_sampling_experiment(groupby, y_label, sample_data, runs_in_project_per_trained_game_lengths.keys())
+        # print("Sample Data:", sample_data)
+
+        win_condition_experiment(groupby, y_label, sample_data, category, plot_num)
+    
+    # plot_win_conditioning(win_conditions_runs_per_high_elo_1, no_win_conditions_runs_per_high_elo_1, 1)
+    # plot_win_conditioning(win_conditions_runs_per_high_elo_2, no_win_conditions_runs_per_high_elo_2, 2)
+    
+    def record_tactics_eval_in_table():
+        tactics_eval_runs = {
+            "fork_sacrifice": ["k93zmql1"],
+            "attraction_fork": ["1y801btw"],
+            "attraction_sacrifice": ["wx1z3l5w"],
+            "kingsideAttack_sacrifice": ["jvzjjlhm"], 
+        }
+        sample_data = []
+        for data_key, run_ids in tactics_eval_runs.items():
+            for run_id in run_ids:
+                panels_by_ckpt = tactics_analyzer.get_all_charts_sort_by_ckpt(run_id)
+                
+            for ckpt_iter_num in [20000, 60000, 100000, 120000]:
+                full_df = tactics_analyzer.get_df_from_panels_per_ckpt(panels_by_ckpt["tactics_eval"][str(ckpt_iter_num)])
+                print(full_df)
+                latex_table = full_df.to_latex(
+                    index=True,  # To not include the DataFrame index as a column in the table
+                    caption=f"Comparison of Tactics Model Performance Metrics (ckpt {ckpt_iter_num}.pt)",  # The caption to appear above the table in the LaTeX document
+                    label="tab:model_comparison",  # A label used for referencing the table within the LaTeX document
+                    # position="htbp",  # The preferred positions where the table should be placed in the document ('here', 'top', 'bottom', 'page')
+                    column_format="|c|c|c|c|",  # The format of the columns: center-aligned with vertical lines between them
+                    escape=False,  # Disable escaping LaTeX special characters in the DataFrame
+                    float_format="{:0.2f}".format  # Formats floats to two decimal places
+                )
+                # latex_customized = combined_df.to_latex(
+                #     index=True,  # Include the index in the output
+                #     caption="Concatenated DataFrame",
+                #     label="tab:concatenated_dataframe",
+                #     column_format="|c|c|c|",  # For three columns with vertical lines
+                #     escape=False  # Keep special characters as is
+                # )
+                with open(f"{data_key}_ckpt_{ckpt_iter_num}.tex", 'w') as f:
+                    f.write(latex_table)
+                print(f"ckpt_{ckpt_iter_num}.pt:")
+                print(latex_table)
+
+    record_tactics_eval_in_table()
         
-        # "1300": ["baapshvl"],
-        # "1700": ["mppogx97"],
-        # "1800": ["800eydo6"],
-        # "1900": ["40rpczem"],
-        # "2000": ["jxatkohv"],
-    # for run_id in runs_in_project: # iterate over the keys
-    #     dfs = analyzer.get_table(run_id)
-    # dfs = analyzer.get_table("ps88jtca")
-    # dfs = analyzer.get_table("ppg3yrog") #1700 Elo
-    # dfs = analyzer.get_table("dfxh8i7a") #1800 Elo
+        
+             # Accessing summary data
+        # print(f"Run ID: {runs[0].id}")
+        # print("Summary Metrics:")
+        # for key, value in runs[0].summary.items():
+        #     print(f"{key}: {value}")
+        # panel_dict = {{}}
+        # for key, value in runs[0].summary.items():
+        #     print(f"{key}: {value}")
+        #     if key.startswith("tactics_eval"):
+        #         panel_values = key.split("/")
+        #         panel_name = "/".join(panel_values[0:-1]) # example: fork_not_sacrifice/5
+        #         ckpt_num = panel_values[1]
+        #         panel_dict[ckpt_num][panel_name].append((panel_values[-1], value)) # example: (accuracy, 7.5)
+                        # for panel_name, tuple_val in v.items(): # item[0] = key, item[1] = value
+                #     panel_values = item[0].split("/")
+                #     panel_name = "".join(panel_values[0:-1])
+                #     metric = panel_values[-1]
+                #     model_key = panel_values[2] # TODO
+                #     length_val = panel_values[3] # TODO
+                    
+                #     # panel_dict[panel_name][metric] = value
+                #     # ret[ckpt_num][panel_name][metric] = value
+                    
+                #     data_list = [] # always size 4
+                #     for panel in panels:
+                #         # val is a tuple of the (metric, value)
+                #         # data_list = [accuracy, total_evals, avg_solved_len, correctly_solved_percentage]
+                #         data_list.append() # TODO: should be a single datapoint value per chart 
+                #     data_by_length_val[length_val][model_key] = data_list
         
     # sample_data = [
     #     {"Game_Length": 0, groupby: "5", y_label: 1000},
@@ -353,7 +599,7 @@ if __name__ == "__main__":
     #         dev,
     #         temperature,
     #         stockfish_level,
-    #     ) = analyzer.fetch_and_process_skill_level_data_for_temperature(df)
+    #     ) = analyzer.fetch_and_process(df)
     #     sample_data += [
     #         {
     #             "Temperature": temperature,
@@ -437,3 +683,5 @@ if __name__ == "__main__":
     #     [],
     # )
     # temperature_sampling_experiment(groupby, y_label, sample_data)
+
+# %%
