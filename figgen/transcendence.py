@@ -278,7 +278,7 @@ if __name__ == "__main__":
         groupby = "High_Elo"  # Key for the temperature group
         y_label = "Rating"
         temperature_sampling_experiment(groupby, y_label, sample_data)
-    # plot_glicko_across_6_elos()
+    plot_glicko_across_6_elos()
     
     def plot_glicko_by_num_starting_moves():
         # runs_in_project_per_trained_game_lengths = { # 0 --> 35
@@ -364,7 +364,7 @@ if __name__ == "__main__":
 
         game_length_sampling_experiment(groupby, y_label, sample_data, runs_in_project_per_trained_game_lengths.keys())
         
-    # plot_glicko_by_num_starting_moves()
+    plot_glicko_by_num_starting_moves()
     
     win_conditions_runs_per_high_elo_1 = { 
         1000: ["13ynfpra"],
@@ -488,8 +488,8 @@ if __name__ == "__main__":
 
         win_condition_experiment(groupby, y_label, sample_data, category, plot_num)
     
-    # plot_win_conditioning(win_conditions_runs_per_high_elo_1, no_win_conditions_runs_per_high_elo_1, 1)
-    # plot_win_conditioning(win_conditions_runs_per_high_elo_2, no_win_conditions_runs_per_high_elo_2, 2)
+    plot_win_conditioning(win_conditions_runs_per_high_elo_1, no_win_conditions_runs_per_high_elo_1, 1)
+    plot_win_conditioning(win_conditions_runs_per_high_elo_2, no_win_conditions_runs_per_high_elo_2, 2)
     
     def record_tactics_eval_in_table():
         tactics_eval_runs = {
@@ -528,38 +528,8 @@ if __name__ == "__main__":
                 print(latex_table)
 
     record_tactics_eval_in_table()
-        
-        
-             # Accessing summary data
-        # print(f"Run ID: {runs[0].id}")
-        # print("Summary Metrics:")
-        # for key, value in runs[0].summary.items():
-        #     print(f"{key}: {value}")
-        # panel_dict = {{}}
-        # for key, value in runs[0].summary.items():
-        #     print(f"{key}: {value}")
-        #     if key.startswith("tactics_eval"):
-        #         panel_values = key.split("/")
-        #         panel_name = "/".join(panel_values[0:-1]) # example: fork_not_sacrifice/5
-        #         ckpt_num = panel_values[1]
-        #         panel_dict[ckpt_num][panel_name].append((panel_values[-1], value)) # example: (accuracy, 7.5)
-                        # for panel_name, tuple_val in v.items(): # item[0] = key, item[1] = value
-                #     panel_values = item[0].split("/")
-                #     panel_name = "".join(panel_values[0:-1])
-                #     metric = panel_values[-1]
-                #     model_key = panel_values[2] # TODO
-                #     length_val = panel_values[3] # TODO
-                    
-                #     # panel_dict[panel_name][metric] = value
-                #     # ret[ckpt_num][panel_name][metric] = value
-                    
-                #     data_list = [] # always size 4
-                #     for panel in panels:
-                #         # val is a tuple of the (metric, value)
-                #         # data_list = [accuracy, total_evals, avg_solved_len, correctly_solved_percentage]
-                #         data_list.append() # TODO: should be a single datapoint value per chart 
-                #     data_by_length_val[length_val][model_key] = data_list
-        
+    
+     
     # sample_data = [
     #     {"Game_Length": 0, groupby: "5", y_label: 1000},
     #     {"Game_Length": 0, groupby: "15", y_label: 1200},
