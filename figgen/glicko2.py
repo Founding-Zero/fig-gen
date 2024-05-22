@@ -175,11 +175,17 @@ class Glicko2:
 class GlickoCalc:
     def __init__(self):
         self.stockfish_elos = {
-            "1": 1554,
-            "2": 1773,
-            "3": 1871,
-            "4": 2006,
-            "5": 2153,
+            "1": 1552,  # Account 9
+            "3": 1842,  # Account 10
+            "5": 2142,  # Account 11
+            # "1": 1683, # Account 6
+            # "3": 1871, # Account 7
+            # "5": 2190, # Account 8
+            # "1": 1555,
+            # "2": 1773,
+            # "3": 1871,
+            # "4": 2006,
+            # "5": 2153,
         }
         self.session_state = {
             "nanogpt_rating": 1500,
