@@ -8,9 +8,9 @@
       "name": "Python Debugger: Current File with Arguments",
       "type": "debugpy",
       "request": "launch",
-      "program": "figgen/__init__.py",
+      "program": "figgen/transcendence.py",
       "console": "integratedTerminal",
-      "args": "-c /home/ezipe/git/deep_research_mothership/figgen_2/runs/2024-03-30---14-59-41/config.json",
+      // "args": "-c /home/ezipe/git/deep_research_mothership/figgen_2/runs/2024-03-30---14-59-41/config.json",
       "justMyCode": false
     }
   ]
